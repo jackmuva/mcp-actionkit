@@ -73,7 +73,11 @@ async function getTools(jwt: string): Promise<Array<any>> {
 	return tools;
 }
 
+
 async function main() {
+	const jwt = signJwt("jack.mu@useparagon.com");
+	console.error("JWT Created: ", jwt);
+	const tools = await getTools(jwt);
 	console.error("Starting MCP Server");
 	const server = new Server(
 		{
@@ -82,11 +86,11 @@ async function main() {
 		},
 		{
 			capabilities: {
-				tools: {},
+				tools: { tools: tools },
 			},
 		},
-	); const jwt = signJwt("jack.mu@useparagon.com");
-	console.error("JWT Created: ", jwt);
+	);
+
 
 	server.setRequestHandler(
 		CallToolRequestSchema,
@@ -119,24 +123,26 @@ async function main() {
 			}
 		}
 	);
+
 	console.error("Tool Call Results Set");
-
-
-	server.setRequestHandler(ListToolsRequestSchema, async () => {
-		const tools = await getTools(jwt);
+	try {
 		console.error("Tools received from ActionKit: ", tools);
-		return {
-			tools: tools
-		};
-	});
-	console.error("Tool Call Schemas Set");
 
-	const transport = new StdioServerTransport();
-	console.error("Connecting server to transport");
-	await server.connect(transport);
+		server.setRequestHandler(ListToolsRequestSchema, async () => {
+			return { tools: tools };
+		});
+		console.error("Tool Call Schemas Set");
 
-	console.error("MCP Server running on stdio");
+		const transport = new StdioServerTransport();
+		console.error("Connecting server to transport");
+		await server.connect(transport);
+		console.error("MCP Server running on stdio");
+
+	} catch (error) {
+		console.error("Error while initializing tools: ", error);
+	}
 }
+
 
 main().catch((error) => {
 	console.error("Fatal error in main():", error);
