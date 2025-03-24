@@ -1,7 +1,7 @@
 # ActionKit MCP Starter
 
 ## Background
-This repo is an MCP server demoing ActionKit. Connect this server to your **Claude Desktop** to get access to all of ActionKit's **Slack** actions.
+This repo is for an MCP server demoing ActionKit. Connect this server to your **Claude Desktop** to get access to all of ActionKit's **Slack** actions.
 In this example it is assumed that your user has authed via the Paragon Connect Portal.
 For the purposes of this demo we filtered actions to Slack actions, but this setting can be changed by removing the Slack filter in 
 the `index.ts` file.
