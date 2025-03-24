@@ -11,7 +11,7 @@ import jwt from "jsonwebtoken";
 //helper functions
 async function getActions(jwt: string): Promise<any | null> {
 	try {
-		const response = await fetch("https://actionkit.useparagon.com/projects/" + process.env.PARAGON_PROJECT_ID + "/actions", {
+		const response = await fetch("https://actionkit.useparagon.com/projects/" + process.env.PARAGON_PROJECT_ID + "/actions?integrations=slack", {
 			method: "GET",
 			headers: { "Content-Type": "application/json", "Authorization": "Bearer " + jwt },
 		});
@@ -44,6 +44,10 @@ async function performAction(actionName: string, actionParams: any, jwt: string)
 
 
 function signJwt(userId: string): string {
+	if (process.env.SIGNING_KEY === undefined) {
+		throw new Error("SIGNING_KEY env variable needs to be set")
+	}
+
 	const currentTime = Math.floor(Date.now() / 1000);
 
 	return jwt.sign(
@@ -52,12 +56,13 @@ function signJwt(userId: string): string {
 			iat: currentTime,
 			exp: currentTime + (60 * 60 * 24 * 7), // 1 week from now
 		},
-		process.env.SIGNING_KEY?.replaceAll("\\n", "\n") ?? "",
+		process.env.SIGNING_KEY?.replaceAll("\\n", "\n"),
 		{
 			algorithm: "RS256",
 		},
 	);
 }
+
 
 async function getTools(jwt: string): Promise<Array<any>> {
 	const tools: Array<Tool> = [];
@@ -66,7 +71,11 @@ async function getTools(jwt: string): Promise<Array<any>> {
 
 	for (const integration of Object.keys(actions)) {
 		for (const action of actions[integration]) {
-			const tool: Tool = action['function']
+			const tool: Tool = {
+				name: action['function']['name'],
+				description: action['function']['description'],
+				inputSchema: action['function']['parameters']
+			}
 			tools.push(tool);
 		}
 	}
@@ -75,9 +84,14 @@ async function getTools(jwt: string): Promise<Array<any>> {
 
 
 async function main() {
-	const jwt = signJwt("jack.mu@useparagon.com");
+	if (process.env.USER === undefined) {
+		throw new Error("USER env variable needs to be set")
+	}
+	const jwt = signJwt(process.env.USER);
 	console.error("JWT Created: ", jwt);
 	const tools = await getTools(jwt);
+	console.error("Tools received from ActionKit: ", tools);
+
 	console.error("Starting MCP Server");
 	const server = new Server(
 		{
@@ -86,7 +100,7 @@ async function main() {
 		},
 		{
 			capabilities: {
-				tools: { tools: tools },
+				tools: {},
 			},
 		},
 	);
@@ -107,7 +121,9 @@ async function main() {
 				const toolName = request.params.name;
 
 				const response = await performAction(toolName, args, jwt);
-				return { content: [{ text: JSON.stringify(response) }] };
+				return {
+					content: [{ type: "text", text: JSON.stringify(response) }],
+				};
 			} catch (error) {
 				console.error("Error executing tool: ", error);
 				return {
@@ -124,17 +140,12 @@ async function main() {
 		}
 	);
 
-	console.error("Tool Call Results Set");
 	try {
-		console.error("Tools received from ActionKit: ", tools);
-
 		server.setRequestHandler(ListToolsRequestSchema, async () => {
 			return { tools: tools };
 		});
-		console.error("Tool Call Schemas Set");
 
 		const transport = new StdioServerTransport();
-		console.error("Connecting server to transport");
 		await server.connect(transport);
 		console.error("MCP Server running on stdio");
 
