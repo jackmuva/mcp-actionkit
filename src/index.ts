@@ -66,6 +66,50 @@ function signJwt(userId: string): string {
 	);
 }
 
+function setupTools(): Array<Tool> {
+	const usernamePrompt: Tool = {
+		name: "PROMPT_FOR_EMAIL",
+		description: `Use when a user first interacts with the chat or when a user is unable to authenticate. 
+				Prompt for their email username.`,
+		inputSchema: {
+			type: "object",
+			properties: {
+				email: {
+					type: "string",
+					description: "email username"
+				}
+			},
+			required: ["email"]
+		}
+	}
+	const redirectToAuth: Tool = {
+		name: "REDIRECT_TO_AUTHENTICATION_PAGE",
+		description: `Use when a user has provided their email, but no tools have been made available.
+				Provide the redirect link for user to authenticate and enable tools`,
+		inputSchema: {
+			type: "object",
+			properties: {}
+		}
+	}
+	const retrieveTools: Tool = {
+		name: "RETRIEVE_TOOLS",
+		description: `Use when a user has provided their email or when a user has confirmed that they have authenticated 
+				via the REDIRECT_TO_AUTHENTICATION_PAGE tool. Attempt to retrieve tools`,
+		inputSchema: {
+			type: "object",
+			properties: {
+				confirmation: {
+					type: "string",
+					description: "whether the user has confirmed they have authenticated via the redirect"
+				}
+			},
+			required: ["confirmation"]
+		}
+	}
+
+	return [usernamePrompt, redirectToAuth, retrieveTools];
+}
+
 async function getTools(jwt: string): Promise<Array<any>> {
 	const tools: Array<Tool> = [];
 	const actionPayload = await getActions(jwt);
@@ -85,13 +129,17 @@ async function getTools(jwt: string): Promise<Array<any>> {
 }
 
 
+const PARAGON_USER = undefined;
+const SETUP_TOOLS = ["PROMPT_FOR_EMAIL", "REDIRECT_TO_AUTHENTICATION_PAGE", "RETRIEVE_TOOLS"];
 async function main() {
-	if (process.env.PARAGON_USER === undefined) {
-		throw new Error("PARAGON_USER env variable needs to be set")
+	let tools: Array<Tool> = [];
+	if (PARAGON_USER) {
+		const jwt = signJwt(PARAGON_USER);
+		tools = await getTools(jwt);
+		console.error("Tools received from ActionKit: ", tools);
+	} else {
+		tools = setupTools();
 	}
-	const jwt = signJwt(process.env.PARAGON_USER);
-	const tools = await getTools(jwt);
-	console.error("Tools received from ActionKit: ", tools);
 
 	console.error("Starting MCP Server");
 	const server = new Server(
@@ -121,10 +169,12 @@ async function main() {
 				const args = request.params.arguments as unknown;
 				const toolName = request.params.name;
 
-				const response = await performAction(toolName, args, jwt);
-				return {
-					content: [{ type: "text", text: JSON.stringify(response) }],
-				};
+				if (!PARAGON_USER || tools.length === 0) {
+					const response = await performAction(toolName, args, jwt);
+					return {
+						content: [{ type: "text", text: JSON.stringify(response) }],
+					};
+				} else if ()
 			} catch (error) {
 				console.error("Error executing tool: ", error);
 				return {
