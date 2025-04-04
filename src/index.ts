@@ -10,6 +10,10 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";// Create server instance
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import jwt from "jsonwebtoken";
+import express from "express";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+
+const app = express();
 
 //helper functions
 async function getActions(jwt: string): Promise<any | null> {
@@ -146,9 +150,20 @@ async function main() {
 			return { tools: tools };
 		});
 
-		const transport = new StdioServerTransport();
-		await server.connect(transport);
-		console.error("MCP Server running on stdio");
+		let transport: SSEServerTransport | null = null;
+		app.get("/sse", (req, res) => {
+			transport = new SSEServerTransport("/messages", res);
+			server.connect(transport);
+		});
+
+		app.post("/messages", (req, res) => {
+			if (transport) {
+				transport.handlePostMessage(req, res);
+			}
+		});
+
+		app.listen(3000);
+		console.error("MCP Server running on SSE");
 
 	} catch (error) {
 		console.error("Error while initializing tools: ", error);
