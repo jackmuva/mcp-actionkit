@@ -1,6 +1,5 @@
 import dotenv from "dotenv";
 dotenv.config();
-console.error(process.env.PARAGON_USER);
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
@@ -67,7 +66,6 @@ function signJwt(userId: string): string {
 	);
 }
 
-
 async function getTools(jwt: string): Promise<Array<any>> {
 	const tools: Array<Tool> = [];
 	const actionPayload = await getActions(jwt);
@@ -92,7 +90,6 @@ async function main() {
 		throw new Error("PARAGON_USER env variable needs to be set")
 	}
 	const jwt = signJwt(process.env.PARAGON_USER);
-	console.error("JWT Created: ", jwt);
 	const tools = await getTools(jwt);
 	console.error("Tools received from ActionKit: ", tools);
 
