@@ -1,3 +1,7 @@
+import dotenv from "dotenv";
+dotenv.config();
+console.error(process.env.PARAGON_USER);
+
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import {
 	CallToolRequest,
@@ -84,10 +88,10 @@ async function getTools(jwt: string): Promise<Array<any>> {
 
 
 async function main() {
-	if (process.env.USER === undefined) {
-		throw new Error("USER env variable needs to be set")
+	if (process.env.PARAGON_USER === undefined) {
+		throw new Error("PARAGON_USER env variable needs to be set")
 	}
-	const jwt = signJwt(process.env.USER);
+	const jwt = signJwt(process.env.PARAGON_USER);
 	console.error("JWT Created: ", jwt);
 	const tools = await getTools(jwt);
 	console.error("Tools received from ActionKit: ", tools);
