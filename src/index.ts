@@ -8,7 +8,6 @@ import {
 	ListToolsRequestSchema,
 	Tool,
 } from "@modelcontextprotocol/sdk/types.js";// Create server instance
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import jwt from "jsonwebtoken";
 import express from "express";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
